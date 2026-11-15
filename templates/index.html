@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="intro container">
+  <div>
+    <div class="eyebrow"><span class="status-dot"></span> ПЛАНИРОВАНИЕ ПЕРЕЛЁТОВ</div>
+    <h1>Цена меняется.<br><span>Понимайте спрос.</span></h1>
+    <p class="intro-copy">Посмотрите, сколько пассажиров выберут ваш рейс.<br class="desktop-break"> Меняйте цену — оценивайте продажи и возможный разброс.</p>
+  </div>
+  <div class="period-card">
+    <div class="period-top"><span>ГОРИЗОНТ ПРОГНОЗА</span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16m-11 4h2m3 0h2"/></svg></div>
+    <strong>01 июня <span>—</span> 01 июля</strong>
+    <div class="period-bottom"><span>2026 год</span><span><b>{{ catalog.routes | length }}</b> направлений <i>·</i> <b>{{ catalog.flights }}</b> рейсов</span></div>
+  </div>
+</section>
+<section class="workspace container" aria-label="Расчёт прогноза">
+  <div class="panel form-panel">
+    <div class="panel-heading"><div class="section-number">01</div><h2>Параметры рейса</h2><span class="panel-caption">Вылет из Москвы</span></div>
+    <form id="forecast-form" data-endpoint="{{ url_for('forecast') }}" novalidate>
+      <div class="fields-row">
+        <div class="field field-origin"><label for="origin">Откуда</label><div class="input-wrap"><span class="input-icon" aria-hidden="true">↗</span><select id="origin" name="origin"><option value="MOW">Москва</option></select></div></div>
+        <div class="field field-destination"><label for="route">Куда</label><div class="input-wrap"><span class="input-icon" aria-hidden="true">↘</span><select id="route" name="route">{% for route in catalog.routes %}<option value="{{ route.route }}">{{ route.destination }}</option>{% endfor %}</select></div></div>
+        <div class="field"><label for="date">Дата вылета</label><input id="date" name="date" type="date" min="{{ catalog.start_date }}" max="{{ catalog.end_date }}" value="{{ catalog.start_date }}" required></div>
+        <div class="field"><label for="price">Цена билета</label><div class="input-wrap price-wrap"><input id="price" name="price" type="number" inputmode="decimal" min="0" max="1000000" step="0.01" value="{{ catalog.routes[0].base_price | int }}" required><span class="currency">₽</span></div></div>
+        <button class="button button-primary calculate-button" id="calculate" type="submit">Рассчитать <span aria-hidden="true">→</span></button>
+      </div>
+      <div class="form-bottom"><p id="base-price">Базовая цена: {{ '{:,.0f}'.format(catalog.routes[0].base_price).replace(',', ' ') }} ₽</p><span>Цена влияет на спрос. Количество мест ограничено.</span></div>
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+    </form>
+  </div>
+  {% if not g.user %}
+  <div class="login-notice"><span class="notice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg></span><div><strong>Ваш следующий шаг — войти</strong><p>Создайте аккаунт или войдите, чтобы рассчитать прогноз и увидеть сценарии спроса.</p></div><a href="{{ url_for('login') }}" class="notice-link">Войти в аккаунт <span aria-hidden="true">↗</span></a></div>
+  {% endif %}
+  <div class="results-heading"><div><span class="section-number">02</span><h2>Прогноз на выбранный рейс</h2></div><span id="result-context" class="panel-caption">Результат появится после расчёта</span></div>
+  <div class="stats-grid" id="stats" aria-live="polite" aria-atomic="true">
+    <article class="stat-card"><div class="stat-top"><h3>Всего мест</h3><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M7 5v8h10V5M5 10v7h14v-7M7 17v4m10-4v4M9 5h6"/></svg></div><div class="stat-value" id="seats-value">—</div><p>Вместимость на эту дату</p></article>
+    <article class="stat-card"><div class="stat-top"><h3>Прогноз спроса</h3><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="m3 17 6-6 4 3 8-10m-6 0h6v6"/></svg></div><div class="stat-value" id="demand-value">—</div><p>Медианный сценарий при вашей цене</p></article>
+    <article class="stat-card stat-highlight"><div class="stat-top"><h3>Прогноз продаж</h3><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4L19 6"/></svg></div><div class="stat-value" id="sold-value">—</div><p id="free-seats">С учётом количества мест</p></article>
+  </div>
+  <div class="panel chart-panel">
+    <div class="chart-heading"><div><div class="eyebrow chart-eyebrow">НЕОПРЕДЕЛЁННОСТЬ ПРОГНОЗА</div><h2>Один рейс. Девять сценариев.</h2><p>Посмотрите, как может отличаться спрос при выбранной цене.</p></div><span class="chart-badge">Квантили 0,1–0,9</span></div>
+    <div class="chart-legend"><span><i class="legend-line"></i> Сценарии спроса</span><span><i class="legend-dot"></i> Медиана</span><span><i class="legend-dashed"></i> Вместимость</span></div>
+    <div class="chart-wrap" id="chart-wrap">
+      <canvas id="demand-chart" role="img" aria-label="График сценариев спроса" hidden></canvas>
+      <div class="chart-empty" id="chart-empty"><div class="empty-plot" aria-hidden="true"><svg viewBox="0 0 260 100" fill="none"><path d="M4 80H256M4 45H256M4 10H256" stroke="#dfe6ee" stroke-dasharray="4 5"/><path d="M20 82 52 75 82 64 112 55 144 40 174 29 207 19 241 10" stroke="#bfd0f7" stroke-width="3"/><circle cx="144" cy="40" r="6" fill="#91ace6" stroke="white" stroke-width="3"/></svg></div><strong>Здесь появится график спроса</strong><p>Выберите рейс и цену, затем нажмите «Рассчитать».</p></div>
+    </div>
+    <p id="result-note" class="result-note" role="status" hidden></p>
+    <details class="scenario-details" id="scenario-details" hidden><summary>Числа за графиком <span>Все 9 сценариев</span></summary><div class="table-scroll"><table><thead><tr><th scope="col">Квантиль</th><th scope="col">Расчётный спрос, чел.</th></tr></thead><tbody id="scenario-table"></tbody></table></div></details>
+    <div class="chart-explainer"><span class="info-icon" aria-hidden="true">i</span><p><strong>Как читать график.</strong> Квантиль 0,5 — медианный спрос. Для квантиля 0,9 модель оценивает вероятность спроса ниже указанного значения в 90%. Пунктир отмечает количество мест. Это сценарии модели, а не гарантии.</p></div>
+  </div>
+  <noscript><div class="login-notice">Для расчётов включите JavaScript в браузере.</div></noscript>
+</section>
+{% endblock %}
+{% block scripts %}<script id="catalog-data" type="application/json">{{ catalog | tojson }}</script><script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}" defer></script><script src="{{ url_for('static', filename='app.js') }}" defer></script>{% endblock %}

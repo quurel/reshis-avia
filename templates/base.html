@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="description" content="Решись Авиа — прогноз спроса на авиабилеты по маршруту, дате и цене.">
+  <title>{% block title %}Прогноз спроса · Решись Авиа{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержимому</a>
+  <header class="header">
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('index') }}" aria-label="Решись Авиа — на главную">
+        <span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m6 22 9-5-3-11 3-1 6 10 7-1 1 2-8 4-2 8-2 1-1-8-7 4Z" fill="currentColor"/></svg></span>
+        <span>решись<span class="brand-light">авиа</span></span>
+      </a>
+      <a class="header-section" href="{{ url_for('index') }}">Прогноз спроса</a>
+      <nav class="account-nav" aria-label="Аккаунт">
+      {% if g.user %}
+        <span class="user-name"><span class="user-avatar" aria-hidden="true">{{ g.user.name[0] | upper }}</span><span>{{ g.user.name }}</span></span>
+        <form action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-quiet" type="submit">Выйти</button></form>
+      {% else %}
+        <a class="button button-quiet" href="{{ url_for('login') }}">Войти</a>
+        <a class="button button-dark button-small" href="{{ url_for('register') }}">Регистрация <span aria-hidden="true">↗</span></a>
+      {% endif %}
+      </nav>
+    </div>
+  </header>
+  <main id="main">{% block content %}{% endblock %}</main>
+  <footer class="footer"><span>© 2026 Решись Авиа</span><span>Прогноз помогает планировать. Решение принимаете вы.</span><span class="footer-tag"><i></i> Учебный проект</span></footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
